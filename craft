@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turtle WoW - Consumables Planner</title>
+    <style>
+        :root {
+            --wow-bg: #0f1114;
+            --wow-card: #1a1d23;
+            --wow-border: #3c3c3c;
+            --wow-gold: #c79c6e; /* Couleur Guerrier / Or */
+            --wow-text: #e0e0e0;
+            --wow-accent: #ffd100;
+            --wow-input: #0a0a0a;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--wow-bg);
+            color: var(--wow-text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .main-header {
+            text-align: center;
+            border-bottom: 2px solid var(--wow-gold);
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+        }
+
+        .main-header h1 {
+            color: var(--wow-accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--wow-card);
+            border: 1px solid var(--wow-border);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            color: var(--wow-gold);
+            font-size: 1.2rem;
+            margin-top: 0;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--wow-border);
+            padding-bottom: 10px;
+        }
+
+        /* Groupes (Tanks, Heals, etc.) */
+        .category-group {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            background: rgba(199, 156, 110, 0.1);
+            padding: 5px 10px;
+            border-left: 3px solid var(--wow-gold);
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--wow-accent);
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr 80px;
+            align-items: center;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .item-row:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .item-name { font-size: 0.95rem; }
+
+        input[type="number"] {
+            background: var(--wow-input);
+            border: 1px solid var(--wow-border);
+            color: var(--wow-accent);
+            padding: 5px;
+            border-radius: 3px;
+            text-align: center;
+            outline: none;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--wow-gold);
+        }
+
+        /* Résultats */
+        .result-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--wow-border);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .result-item span:last-child {
+            color: var(--wow-accent);
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            margin-top: 40px;
+            font-style: italic;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #555;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+<header class="main-header">
+    <h1>Consumables Planner</h1>
+    <div style="color: var(--wow-gold); font-size: 0.9rem;">Turtle WoW Edition</div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h2><span style="margin-right:10px;">🎒</span> Liste des Consommables</h2>
+        
+        <div id="catalog">
+            </div>
+    </div>
+
+    <div class="card">
+        <h2><span style="margin-right:10px;">📜</span> Liste des Courses</h2>
+        <div id="shopping-list">
+            <p class="empty-state">Sélectionnez des quantités pour voir les composants nécessaires.</p>
+        </div>
+    </div>
+</div>
+
+<footer>
+    "Les Veilleurs" Tel'Abim Horde
+</footer>
+
+<script>
+    // Database extraite de tes fichiers Excel
+    const recipes = {
+        "Flask of Titan": { "Black lotus": 1, "Crystal vial": 1, "Stonescale eel": 10, "Golden sansam": 30 },
+        "Distilled Wisdom": { "Black lotus": 1, "Crystal vial": 1, "Dreamfoil": 30, "Icecap": 10 },
+        "Supreme Power": { "Black lotus": 1, "Crystal vial": 1, "Dreamfoil": 30, "Mountain silversage": 10 },
+        "Elixir of Greater Defense": { "Sungrass": 1, "Stonescale eel": 2, "Leaded vial": 1 },
+        "Elixir of the Mongoose": { "Mountain silversage": 2, "Plaguebloom": 2, "Crystal vial": 1 },
+        "Stoneshield Potion": { "Stonescale eel": 3, "Crystal vial": 1 },
+        "Brilliant Mana Oil": { "Large Brilliant Shard": 2, "Purple Lotus": 3, "Imbued Vial": 1 },
+        "Brilliant Wizard Oil": { "Large Brilliant Shard": 2, "Firebloom": 3, "Imbued Vial": 1 },
+        "Major Mana Potion": { "Dreamfoil": 3, "Icecap": 2, "Crystal vial": 1 },
+        "Mageblood Potion": { "Dreamfoil": 2, "Plaguebloom": 1, "Crystal vial": 1 },
+        "Greater Fire Protection": { "Elemental Fire": 1, "Dreamfoil": 1, "Crystal vial": 1 },
+        "Greater Nature Protection": { "Elemental Earth": 1, "Dreamfoil": 1, "Crystal vial": 1 },
+        "Elixir of Giants": { "Sungrass": 1, "Gromsblood": 1, "Crystal vial": 1 },
+        "Gift of Arthas": { "Arthas' Tears": 1, "Blindweed": 1, "Leaded vial": 1 }
+    };
+
+    const categories = {
+        "TANKS": ["Flask of Titan", "Elixir of Greater Defense", "Stoneshield Potion", "Gift of Arthas"],
+        "HEALS": ["Distilled Wisdom", "Brilliant Mana Oil", "Major Mana Potion", "Mageblood Potion"],
+        "DPS": ["Supreme Power", "Elixir of the Mongoose", "Brilliant Wizard Oil", "Elixir of Giants"],
+        "RESISTANCES": ["Greater Fire Protection", "Greater Nature Protection"]
+    };
+
+    const catalogContainer = document.getElementById('catalog');
+    const shoppingListContainer = document.getElementById('shopping-list');
+
+    // Initialisation du catalogue
+    function init() {
+        for (const [catName, items] of Object.entries(categories)) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'category-group';
+            groupDiv.innerHTML = `<div class="category-title">${catName}</div>`;
+            
+            items.forEach(itemName => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                row.innerHTML = `
+                    <span class="item-name">${itemName}</span>
+                    <input type="number" min="0" value="0" class="qty-input" data-item="${itemName}">
+                `;
+                groupDiv.appendChild(row);
+            });
+            
+            catalogContainer.appendChild(groupDiv);
+        }
+
+        // Event listener
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+    }
+
+    function calculate() {
+        const totalMaterials = {};
+        const inputs = document.querySelectorAll('.qty-input');
+        let hasSelection = false;
+
+        inputs.forEach(input => {
+            const qty = parseInt(input.value) || 0;
+            const itemName = input.dataset.item;
+
+            if (qty > 0) {
+                hasSelection = true;
+                const recipe = recipes[itemName];
+                if (recipe) {
+                    for (const [material, amount] of Object.entries(recipe)) {
+                        totalMaterials[material] = (totalMaterials[material] || 0) + (amount * qty);
+                    }
+                }
+            }
+        });
+
+        renderShoppingList(totalMaterials, hasSelection);
+    }
+
+    function renderShoppingList(materials, hasSelection) {
+        if (!hasSelection) {
+            shoppingListContainer.innerHTML = '<p class="empty-state">Sélectionnez des quantités pour voir les composants nécessaires.</p>';
+            return;
+        }
+
+        let html = '<ul class="result-list">';
+        // Trier les matériaux par nom
+        const sortedMats = Object.keys(materials).sort();
+        
+        for (const mat of sortedMats) {
+            html += `
+                <li class="result-item">
+                    <span>${mat}</span>
+                    <span>x${materials[mat]}</span>
+                </li>
+            `;
+        }
+        html += '</ul>';
+        shoppingListContainer.innerHTML = html;
+    }
+
+    init();
+</script>
+
+</body>
+</html>
